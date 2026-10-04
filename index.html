@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acesso Remoto HTML5</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #222; color: #fff; text-align: center; }
+        #canvas-container { margin: 20px auto; width: 80%; max-width: 1024px; border: 2px solid #555; }
+        canvas { width: 100%; height: auto; display: block; background: #000; }
+        .controls { margin-top: 15px; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <h1>Painel de Controlo Remoto</h1>
+    
+    <div id="canvas-container">
+        <!-- O ecrã do computador remoto será renderizado aqui dentro -->
+        <canvas id="remoteScreen" width="1024" height="768"></canvas>
+    </div>
+
+    <div class="controls">
+        <button id="connectBtn">Ligar à Rede Local</button>
+    </div>
+
+    <!-- Script que faz a ligação em tempo real -->
+    <script>
+        const canvas = document.getElementById('remoteScreen');
+        const ctx = canvas.getContext('2d');
+        const connectBtn = document.getElementById('connectBtn');
+
+        connectBtn.addEventListener('click', () => {
+            // Um HTML sozinho não acede à rede. Ele liga-se a um servidor via WebSocket (ex: ws://)
+            // O IP abaixo seria o do seu servidor gateway na rede local
+            const socket = new WebSocket('ws://192.168.1.50:8080');
+
+            socket.onopen = () => {
+                alert('Ligação estabelecida com o gateway local!');
+            };
+
+            // Recebe as imagens do ecrã enviadas pelo servidor de backend e desenha-as no HTML
+            socket.onmessage = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    ctx.drawImage(img, 0, 0);
+                };
+                img.src = 'data:image/jpeg;base64,' + event.data;
+            };
+
+            // Captura os cliques do rato no HTML e envia para o PC local
+            canvas.addEventListener('click', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                // Envia as coordenadas do clique para o servidor processar no PC real
+                socket.send(JSON.stringify({ action: 'click', x: x, y: y }));
+            });
+        </script>
+</body>
+</html>
